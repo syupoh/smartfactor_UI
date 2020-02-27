@@ -1,0 +1,6 @@
+*.pyc
+.idea/*
+*.png
+*.jpg
+result.txt
+detected_*
