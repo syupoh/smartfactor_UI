@@ -10,7 +10,7 @@ import npy
 from .utils import task, Dummy
 
 
-def image_to_patches(image):
+def image_to_patches(image, P):
     H, W = image.shape[:2]
     patches = list()
     coords = list()
@@ -191,7 +191,7 @@ class InspectUI(Frame):
         self.set_image(image)
 
     def inspect_and_get_result(self, image):
-        patches, coords = image_to_patches(image)
+        patches, coords = image_to_patches(image, self.patch_size)
         s = time.time()
         print('Inspect start.')
         defect_probs = self.inspect_core.inspect(patches)
@@ -200,14 +200,42 @@ class InspectUI(Frame):
 
         results = list()
         for (y, x), defect_prob in zip(coords, defect_probs):
-            result = InspectResultEntry(x, y, 128, 128, defect_prob)
-            results.append(result)
+            if defect_prob > self.thres:
+                result = InspectResultEntry(x, y, self.patch_size, self.patch_size, defect_prob)
+                results.append(result)
         return results
 
     def OnClick_inspect(self):
         self._clear_inspect_result()
         inspect_results = self.inspect_and_get_result(self.img_original)
+        inspect_results = self.refine_inspect_results(inspect_results)
         return self._display_inspect_result(inspect_results)
+
+    def refine_inspect_results(self, inspect_results):
+        rs = inspect_results
+
+        with task('Merge adjacent rectangles'):
+            with task('Merge along y-axis'):
+                with task('Sort on y coords'):
+                    rs.sort(key=lambda r_: r_.y)
+
+                    changed = True
+                    while changed:
+                        changed = False
+
+                        for n in range(len(rs) - 1):
+                            r1 = rs[n]
+                            for r2 in rs[n + 1:]:
+                                if r1.x == r2.x and r1.w == r2.w and r1.y + r1.h == r2.y:  # adjacent.
+                                    r1.h = r1.h + r2.h
+                                    r2.h = 0
+                                    r1.p = max(r1.p, r2.p)
+                                    changed = True
+
+                                    break
+
+        rs = list(filter(lambda r_: r_.h != 0 and r_.w != 0, rs))
+        return rs
 
     def _clear_inspect_result(self):
         for v in self.inspect_display_components:
@@ -216,7 +244,6 @@ class InspectUI(Frame):
 
     def _display_inspect_result(self, inspect_results):
         s = self.scale
-        n_defect = 0
         ins_patch = list()
         text_patch = list()
 
@@ -224,28 +251,26 @@ class InspectUI(Frame):
         # oriimg2 = self.img
 
         for r in inspect_results:
-            if r.p > self.thres:
-                area = (r.x, r.y, r.x + r.w, r.y + r.h)
-                ins_patch.append(oriimg.crop(area))
-                rect = self.canvas_image.create_rectangle(
-                    r.x * s, r.y * s,
-                    (r.x + r.w) * s, (r.y + r.h) * s,
-                    fill="", width=3, outline='red'
-                )
+            area = (r.x, r.y, r.x + r.w, r.y + r.h)
+            ins_patch.append(oriimg.crop(area))
+            rect = self.canvas_image.create_rectangle(
+                r.x * s, r.y * s,
+                (r.x + r.w) * s, (r.y + r.h) * s,
+                fill="", width=3, outline='red'
+            )
 
-                x, y = pixel_to_cm(r.x, r.y)
-                text = '(%.1f, %.1f)' % (x, y)
-                text_patch.append(text)
+            x, y = pixel_to_cm(r.x, r.y)
+            text = '(%.1f, %.1f)' % (x, y)
+            text_patch.append(text)
 
-                text = self.canvas_image.create_text(
-                    (r.x + 64) * s, (r.y + r.h + 20) * s,
-                    fill="red", font="Helvetica 9", text=text
-                )
-                self.inspect_display_components.append(rect)
-                self.inspect_display_components.append(text)
+            text = self.canvas_image.create_text(
+                (r.x + r.w // 2) * s, (r.y + r.h + 25) * s,
+                fill="red", font="Helvetica 9", text=text
+            )
+            self.inspect_display_components.append(rect)
+            self.inspect_display_components.append(text)
 
-                n_defect += 1
-
+        n_defect = len(inspect_results)
         return n_defect, ins_patch, text_patch
 
     def set_image(self, image):
