@@ -1,22 +1,14 @@
-import socket
-import pickle
-import json
 import numpy as np
 import tensorflow as tf
 import time
-from codes.config import *
 from .ae import Detector
 
 from tkinter import *
 from PIL import ImageTk, Image
 from imageio import imread, imsave
 import npy
-from .config import SERVER_HOST, SERVER_PORT
-from .socket_funcs import receive, send
 from .utils import task, Dummy
 from .PTCams.FLIRCamera import Camera
-
-import pdb
 
 
 def image_to_patches(image):

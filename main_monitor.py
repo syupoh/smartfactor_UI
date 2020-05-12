@@ -82,11 +82,9 @@ class App:
         self.main_img3 = self.main_img3.resize((self.main_img_w, self.main_img_h))
         self.main_img3_tk = PIL.ImageTk.PhotoImage(self.main_img3)
 
-        ##########################################
-
+    def mainloop(self):
         # After it is called once, the update method will be automatically called every delay mill
         self.update()
-
         self.window.mainloop()
 
     def update(self):
@@ -204,10 +202,10 @@ class App:
 
 
 def main():
-    # detection.run()
     import npy
     npy.set_tf_log()
-    App(tk.Tk(), "Smart Factory Demo")
+    app = App(tk.Tk(), "Smart Factory Demo")
+    app.mainloop()
 
 
 if __name__ == "__main__":
