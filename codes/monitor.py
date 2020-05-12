@@ -5,7 +5,7 @@ except ImportError:
 
 import PIL.Image
 import PIL.ImageTk
-from .inspect_tool import InspectTool
+from .inspect_tool import InspectUI
 from .PTCams.FLIRCamera import Camera
 
 
@@ -47,7 +47,7 @@ class Monitor:
         self.main_img = list()
         images = self.camera.get()
 
-        self.detection = InspectTool(self.camera)
+        self.detection = InspectUI(self.camera)
 
         self.main_img1 = PIL.Image.fromarray(images[0])
         self.main_img2 = PIL.Image.fromarray(images[1])

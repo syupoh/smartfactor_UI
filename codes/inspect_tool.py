@@ -32,7 +32,7 @@ def pixel_to_cm(i, j):
     return x, y
 
 
-class InspectTool(Frame):
+class InspectUI(Frame):
     def __init__(self, camera=None, use_camera=True, use_inspect=True):
         self.window = Toplevel()
         self.window.title('Inspection')

@@ -1,8 +1,8 @@
-from codes.inspect_tool import InspectTool
+from codes.inspect_tool import InspectUI
 
 
 def main():
-    tool = InspectTool(use_camera=False, use_inspect=False)
+    tool = InspectUI(use_camera=False, use_inspect=False)
     tool.mainloop()
 
 
