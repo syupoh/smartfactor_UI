@@ -24,7 +24,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# 잘되는것같아요 넵 example.py 코드 에선 되는데 혹시 저 Camera 는 뭐죠?
-# Camera  라이브러리요??
-# 저희가 만든겁니다  wrapper 클래스 그냥
-# if 만든겁니다:

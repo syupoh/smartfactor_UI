@@ -1,6 +1,6 @@
 try:
     import tkinter as tk
-except ImportError :
+except ImportError:
     import Tkinter as tk
 import cv2
 import PIL.Image, PIL.ImageTk
@@ -10,6 +10,7 @@ import os
 from codes.client import InspectTool
 from codes.PTCams.FLIRCamera import Camera
 import pdb
+
 
 class App:
     def __init__(self, window12, window_title):
@@ -22,19 +23,18 @@ class App:
 
         self.n_defect = 0
 
-
         self.window = window12
         self.window.title(window_title)
 
         self.screen_w = self.window.winfo_screenwidth()
         self.screen_h = self.window.winfo_screenheight()
-        self.win_w = int(self.screen_w-150)
-        self.win_h = int(self.screen_h-130)
+        self.win_w = int(self.screen_w - 150)
+        self.win_h = int(self.screen_h - 130)
         self.win_x = int(80)
         self.win_y = int(30)
 
-        self.main_img_w = int((self.win_w-30)/3)
-        self.main_img_h = int(self.win_h/2)
+        self.main_img_w = int((self.win_w - 30) / 3)
+        self.main_img_h = int(self.win_h / 2)
 
         self.window.geometry("{0}x{1}+{2}+{3}".format(self.win_w, self.win_h, self.win_x, self.win_y))
 
@@ -56,11 +56,9 @@ class App:
         self.main_img2 = PIL.Image.fromarray(images[1])
         self.main_img3 = PIL.Image.fromarray(images[2])
 
-
         self.buttons = tk.Button(self.window, overrelief="solid",
-                                   text='Take',
-                                   command=self.click_take, repeatdelay=1000, repeatinterval=100)
-
+                                 text='Take',
+                                 command=self.click_take, repeatdelay=1000, repeatinterval=100)
 
         #################
 
@@ -85,7 +83,7 @@ class App:
         self.main_img3_tk = PIL.ImageTk.PhotoImage(self.main_img3)
 
         ##########################################
-        
+
         # After it is called once, the update method will be automatically called every delay mill
         self.update()
 
@@ -95,11 +93,11 @@ class App:
         self.win_w = self.window.winfo_width()
         self.win_h = self.window.winfo_height()
 
-        self.main_img_w = int((self.win_w-30)/3)
-        self.main_img_h = int(self.win_h/2)
-        self.main_img_x = int((self.win_w - self.main_img_w*3 - 20)/2)
+        self.main_img_w = int((self.win_w - 30) / 3)
+        self.main_img_h = int(self.win_h / 2)
+        self.main_img_x = int((self.win_w - self.main_img_w * 3 - 20) / 2)
         self.main_img_y = int(10)
-        self.patch_y = int(self.win_h - (self.patch_size + 10))  
+        self.patch_y = int(self.win_h - (self.patch_size + 10))
 
         images = self.camera.get()
 
@@ -109,7 +107,7 @@ class App:
 
         self.buttons.place(y=self.main_img_y + self.main_img_h + 20, x=self.main_img_x, height=40, width=120)
 
-        if (self.main_img_w > 0 and self.main_img_h >0):
+        if (self.main_img_w > 0 and self.main_img_h > 0):
             self.main_img1 = self.main_img1.resize((self.main_img_w, self.main_img_h))
             self.main_img1_tk = PIL.ImageTk.PhotoImage(self.main_img1)
             self.main_lbl1 = tk.Label(self.window, image=self.main_img1_tk)
@@ -117,7 +115,7 @@ class App:
             self.main_img2 = self.main_img2.resize((self.main_img_w, self.main_img_h))
             self.main_img2_tk = PIL.ImageTk.PhotoImage(self.main_img2)
             self.main_lbl2 = tk.Label(self.window, image=self.main_img2_tk)
-            
+
             self.main_img3 = self.main_img3.resize((self.main_img_w, self.main_img_h))
             self.main_img3_tk = PIL.ImageTk.PhotoImage(self.main_img3)
             self.main_lbl3 = tk.Label(self.window, image=self.main_img3_tk)
@@ -155,19 +153,19 @@ class App:
         self.main_lbl3 = tk.Label(self.window, image=self.main_img3_tk)
 
         self.main_lbl1.place(x=self.main_img_x, y=self.main_img_y, width=self.main_img_w, height=self.main_img_h)
-        self.main_lbl2.place(x=self.main_img_x + (self.main_img_w + 10) * 1, y=self.main_img_y, width=self.main_img_w, height=self.main_img_h)
-        self.main_lbl3.place(x=self.main_img_x + (self.main_img_w + 10) * 2, y=self.main_img_y, width=self.main_img_w, height=self.main_img_h)
-
+        self.main_lbl2.place(x=self.main_img_x + (self.main_img_w + 10) * 1, y=self.main_img_y, width=self.main_img_w,
+                             height=self.main_img_h)
+        self.main_lbl3.place(x=self.main_img_x + (self.main_img_w + 10) * 2, y=self.main_img_y, width=self.main_img_w,
+                             height=self.main_img_h)
 
         self.label1 = tk.Label(self.window, text="defect 갯수 {0}".format(self.n_defect), height=5)
         # self.label2 = tk.Label(self.window, text="defect 크기 {0}".format(self.size_defect), height=5)
         # self.label3 = tk.Label(self.window, text="defect 간 거리 {0}".format(self.dist_defect), height=5)
 
-
-        self.label1.place(x=self.main_img_x+(self.patch_size+10)*5+10, y=self.patch_y, height=13)
+        self.label1.place(x=self.main_img_x + (self.patch_size + 10) * 5 + 10, y=self.patch_y, height=13)
         # self.label2.place(x=self.main_img_x+(self.patch_size+10)*5+10, y=self.patch_y+(13+5)*1, height=13)
         # self.label3.place(x=self.main_img_x+(self.patch_size+10)*5+10, y=self.patch_y+(13+5)*2, height=13)
-        
+
         self.window.after(self.delay, self.update)
 
         self.cnt += 1
@@ -184,7 +182,7 @@ class App:
             # if i == 0:
             #     self.detected_img1 = patch
             # if i == 1:
-            
+
             #     self.detected_img2 = patch
             # if i == 2:
             #     self.detected_img3 = patch
@@ -211,6 +209,6 @@ def main():
     npy.set_tf_log()
     App(tk.Tk(), "Smart Factory Demo")
 
+
 if __name__ == "__main__":
     main()
-

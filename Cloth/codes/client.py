@@ -9,7 +9,6 @@ import npy
 from .utils import task, Dummy
 
 
-
 def image_to_patches(image):
     H, W = image.shape[:2]
     patches = list()

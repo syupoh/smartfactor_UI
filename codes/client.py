@@ -18,6 +18,7 @@ from .PTCams.FLIRCamera import Camera
 
 import pdb
 
+
 def image_to_patches(image):
     H, W = image.shape[:2]
     patches = list()
@@ -113,6 +114,7 @@ class InspectTool(Frame):
                     v = int(self.labels.slider.get())
                     self.thres = v / 10000
                     self.labels.message.config(text='Threshold: %d' % v)
+
                 # 1. make labels and texts
                 self.labels.message = Label(self.window, text='Threshold: 0', bg='white')
                 self.thres_var = IntVar()
@@ -152,7 +154,7 @@ class InspectTool(Frame):
             images = self.camera.get()
             image = self.merge_images(images)
             image = image[700:, 200: -1000]
-            #print(image.shape)
+            # print(image.shape)
         else:
             image = imread('data/191101/test.png')
 
@@ -208,17 +210,17 @@ class InspectTool(Frame):
         for prob, coords in zip(defect_probs, coords):
             if prob > self.thres:
                 j, i = coords
-                area = (i, j, i+128, j+128)
+                area = (i, j, i + 128, j + 128)
                 ins_patch.append(oriimg.crop(area))
                 # ins_patch.append(oriimg2[(i*s):(i+128)*s, (j*s):(j+128)*s, :])
                 r = self.canvas_image.create_rectangle(i * s, j * s, (i + 128) * s, (j + 128) * s,
-                                                   fill="", width=3, outline='red')
+                                                       fill="", width=3, outline='red')
 
                 x, y = pixel_to_cm(i, j)
                 text = '(%.1f, %.1f)' % (x, y)
                 text_patch.append(text)
                 t = self.canvas_image.create_text((i + 64) * s, (j + 128 + 20) * s, fill="red",
-                                              font="Helvetica 9", text=text)
+                                                  font="Helvetica 9", text=text)
                 self.inspect_result.append(r)
                 self.inspect_result.append(t)
 
@@ -226,12 +228,10 @@ class InspectTool(Frame):
         # pdb.set_trace()
         return n_defect, ins_patch, text_patch
 
-
     def set_image(self, image):
         self.img_original = image
         image = self._resize_image(image)
         self._display_image(image)
-
 
     def _resize_image(self, image):
         max_h = 1000
@@ -253,147 +253,8 @@ class InspectTool(Frame):
             self.canvas_image.delete(self.img_created)
 
         self.img_created = self.canvas_image.create_image(0, 0, anchor="nw", image=self.img_tk)
+
     ###########
 
     def run(self):
         self.window.mainloop()
-
-
-class PiHub(InspectTool):
-    def __init__(self):
-        super().__init__()
-
-    @property
-    def leftCameraConfig(self):
-        return {
-            'awb_mode': 'auto',
-            'exposure_mode': 'auto',
-            'flash_mode': 'auto',
-            'brightness': 45,
-            'contrast': 99,
-            'saturation': 70,
-        }
-
-    @property
-    def rightCameraConfig(self):
-        return {
-            'awb_mode': 'auto',
-            'exposure_mode': 'auto',
-            'flash_mode': 'on',
-
-            'brightness': 46,
-            'contrast': 64,
-            'saturation': 12,
-        }
-
-    def get_image(self):
-        camera1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        camera2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        camera1.connect((CAMERA1_HOST, CAMERA1_PORT))
-        camera2.connect((CAMERA2_HOST, CAMERA2_PORT))
-
-        image1_file = "left_camera.jpg"
-        image2_file = "right_camera.jpg"
-
-        # 1. Tx JPEG
-        packet1 = self.leftCameraConfig
-        packet2 = self.rightCameraConfig
-        serial1 = json.dumps(packet1)
-        serial2 = json.dumps(packet2)
-        camera1.send(serial1.encode("utf-8"))
-        camera2.send(serial2.encode("utf-8"))
-
-        # 2. Rx SIZE size
-        packet1 = camera1.recv(1024)
-        packet2 = camera2.recv(1024)
-        print("packet from camera1 = ", packet1.decode("ascii"))
-        print("packet from camera2 = ", packet2.decode("ascii"))
-        message1 = packet1.decode("ascii")
-        message2 = packet2.decode("ascii")
-        tmp1 = message1.split()
-        tmp2 = message2.split()
-        image1_size = int(tmp1[1])
-        image2_size = int(tmp2[1])
-
-        # 3. Tx SIZE size
-        packet1 = "REQ TX %s" % image1_size
-        packet2 = "REQ TX %s" % image2_size
-        camera1.send(packet1.encode("ascii"))
-        camera2.send(packet2.encode("ascii"))
-
-        # 4. Rx image data
-        # image1_file = "/run/user/1000/camera1.jpg"
-        # image2_file = "/run/user/1000/camera2.jpg"
-        file1 = open(image1_file, "wb")
-        file2 = open(image2_file, "wb")
-
-        total_rx1 = 0
-        total_rx2 = 0
-        while (total_rx1 < image1_size) or (total_rx2 < image2_size):
-            packet1 = b''
-            if (total_rx1 < image1_size):
-                packet1 = camera1.recv(4 * 1024)
-                total_rx1 += len(packet1)
-                if len(packet1):
-                    # print('size = ', len(packet1))
-                    file1.write(packet1)
-            # print("total rx1 = ", total_rx1)
-            packet2 = b''
-            if (total_rx2 < image2_size):
-                packet2 = camera2.recv(4 * 1024)
-                total_rx2 += len(packet2)
-                if len(packet2):
-                    # print('size = ', len(packet1))
-                    file2.write(packet2)
-                # print("total rx2 = ", total_rx2)
-
-            if (len(packet1) == 0) and (len(packet2) == 0):
-                break
-
-        file1.close()
-        file2.close()
-
-        camera1.shutdown(socket.SHUT_RDWR)
-        camera2.shutdown(socket.SHUT_RDWR)
-        camera1.close()
-        camera2.close()
-        image = imread(image2_file)
-
-        image = image[56:]
-        H, W = image.shape[:2]
-        image = npy.image.resize(image, (H * 2, W * 2))
-        image = image[:, 128 * 3: -128 * 3]
-        return image
-
-
-class Client(PiHub):
-    def __init__(self):
-        self.host = SERVER_HOST
-        self.port = SERVER_PORT
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        super().__init__()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.socket.close()
-
-    def sendObj(self, obj):
-        data = pickle.dumps(obj)
-        send(self.socket, data)
-
-    def receive(self):
-        data = receive(self.socket, PACKET_SIZE)
-        obj = pickle.loads(data)
-        return obj
-
-    def inspect(self, patches):
-        self.socket.connect((self.host, self.port))
-        self.sendObj(patches)
-        result = self.receive()
-        self.socket.close()
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        return result
