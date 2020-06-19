@@ -64,14 +64,15 @@ class PatchInspectCore:
         recons = self.detector.recon(patches)
         residual = np.square(patches - recons)
         scores = residual.max(axis=-1).max(axis=-1).max(axis=-1)
+        results = [PatchInspectResultEntry(score, 1) for score in scores]  # TODO calc size
+        return results
 
-        return scores
-
-    def inspect_random(self, patches) -> np.ndarray:  # [N_patch]
+    def inspect_random(self, patches) -> list:  # [N_patch]
         print('Showing dummy result!')
         N = patches.shape[0]
-        result = np.random.uniform(0, 1, size=N)
-        return result
+        scores = np.random.uniform(0, 1, size=N)
+        results = [PatchInspectResultEntry(score, 1) for score in scores]
+        return results
 
     def inspect(self, patches):
         if self.use_ae:
@@ -82,13 +83,20 @@ class PatchInspectCore:
         return result
 
 
-class InspectResultEntry:
-    def __init__(self, x, y, h, w, p):
+class PatchInspectResultEntry:
+    def __init__(self, score, defect_size):
+        self.score = score  # abnormality
+        self.defect_size = defect_size  # size
+
+
+class DefectEntry:
+    def __init__(self, x, y, h, w, p, size):
         self.x = x
         self.y = y
         self.h = h
         self.w = w
         self.p = p
+        self.size = size
 
 
 class InspectUI(Frame):
@@ -194,22 +202,22 @@ class InspectUI(Frame):
         patches, coords = image_to_patches(image, self.patch_size)
         s = time.time()
         print('Inspect start.')
-        defect_probs = self.inspect_core.inspect(patches)
+        patch_results = self.inspect_core.inspect(patches)
         e = time.time()
         print('Inspect done. Took %.2fs' % (e - s))
 
         results = list()
-        for (y, x), defect_prob in zip(coords, defect_probs):
-            if defect_prob > self.thres:
-                result = InspectResultEntry(x, y, self.patch_size, self.patch_size, defect_prob)
+        for (y, x), patch in zip(coords, patch_results):
+            if patch.score > self.thres:
+                result = DefectEntry(x, y, self.patch_size, self.patch_size, patch.score, patch.defect_size)
                 results.append(result)
         return results
 
     def OnClick_inspect(self):
         self._clear_inspect_result()
-        inspect_results = self.inspect_and_get_result(self.img_original)
-        inspect_results = self.refine_inspect_results(inspect_results)
-        return self._display_inspect_result(inspect_results)
+        defects = self.inspect_and_get_result(self.img_original)
+        defects = self.refine_inspect_results(defects)
+        return self._display_inspect_result(defects)
 
     def refine_inspect_results(self, inspect_results):
         rs = inspect_results
@@ -227,9 +235,11 @@ class InspectUI(Frame):
                             r1 = rs[n]
                             for r2 in rs[n + 1:]:
                                 if r1.x == r2.x and r1.w == r2.w and r1.y + r1.h == r2.y:  # adjacent.
+                                    # (r1, r2) -> r1
                                     r1.h = r1.h + r2.h
                                     r2.h = 0
                                     r1.p = max(r1.p, r2.p)
+                                    r1.size = r1.size + r2.size
                                     changed = True
 
                                     break
@@ -260,7 +270,7 @@ class InspectUI(Frame):
             )
 
             x, y = pixel_to_cm(r.x, r.y)
-            text = '(%.1f, %.1f)' % (x, y)
+            text = f'({x:.1f}, {y:.1f})\n[{r.size:.1f}]'
             text_patch.append(text)
 
             text = self.canvas_image.create_text(
