@@ -58,13 +58,16 @@ class PatchInspectCore:
 
     # Inspect logics
 
-    def inspect_local(self, patches) -> np.ndarray:  # [N_patch]
+    def inspect_local(self, patches, thres) -> np.ndarray:  # [N_patch]
         patches = npy.image.rgb2gray(patches, keep_dims=True)
         patches = npy.image.to_float32(patches)
         recons = self.detector.recon(patches)
         residual = np.square(patches - recons)
         scores = residual.max(axis=-1).max(axis=-1).max(axis=-1)
-        results = [PatchInspectResultEntry(score, 1) for score in scores]  # TODO calc size
+        residual2 = residual.max(axis=-1)
+        defect_map = residual2 > thres
+        defect_count = np.sum(defect_map, axis=(1, 2))
+        results = [PatchInspectResultEntry(score, count) for score, count in zip(scores, defect_count)]
         return results
 
     def inspect_random(self, patches) -> list:  # [N_patch]
@@ -74,9 +77,9 @@ class PatchInspectCore:
         results = [PatchInspectResultEntry(score, 1) for score in scores]
         return results
 
-    def inspect(self, patches):
+    def inspect(self, patches, thres):
         if self.use_ae:
-            result = self.inspect_local(patches)
+            result = self.inspect_local(patches, thres)
         else:
             result = self.inspect_random(patches)
 
@@ -84,7 +87,7 @@ class PatchInspectCore:
 
 
 class PatchInspectResultEntry:
-    def __init__(self, score, defect_size):
+    def __init__(self, score, defect_size=1):
         self.score = score  # abnormality
         self.defect_size = defect_size  # size
 
@@ -100,7 +103,7 @@ class DefectEntry:
 
 
 class InspectUI(Frame):
-    def __init__(self, camera=None, use_camera=True, use_ae=True):
+    def __init__(self, camera=None, use_camera=True, use_ae=True, use_smooth=False):
         self.window = Toplevel()
         self.window.title('Inspection')
         self.swit = 0
@@ -130,6 +133,7 @@ class InspectUI(Frame):
 
         self.use_camera = use_camera
         self.use_ae = use_ae
+        self.use_smooth = use_smooth
         self.inspect_core = PatchInspectCore(use_ae)
         self.camera = camera
 
@@ -163,7 +167,7 @@ class InspectUI(Frame):
             with task():
                 def select(_):
                     v = int(self.labels.slider.get())
-                    self.thres = v / 100
+                    self.thres = v / 1000
                     self.labels.message.config(text='Threshold: %d' % v)
 
                 # 1. make labels and texts
@@ -190,7 +194,7 @@ class InspectUI(Frame):
 
         else:
             print('Using test image!')
-            image = imread('data/191101/test.png')
+            image = imread('data/4.png')
 
         return image
 
@@ -198,18 +202,32 @@ class InspectUI(Frame):
         image = self.get_image()
         self.set_image(image)
 
+    def smooth_image(self, image):
+        from skimage.filters import gaussian
+        blurred = gaussian(image, sigma=3)
+        return blurred
+
     def inspect_and_get_result(self, image):
+        if self.use_smooth:
+            image = self.smooth_image(image)
+            imsave('blurred.png', image)
         patches, coords = image_to_patches(image, self.patch_size)
         s = time.time()
         print('Inspect start.')
-        patch_results = self.inspect_core.inspect(patches)
+        patch_results = self.inspect_core.inspect(patches, self.thres)
         e = time.time()
         print('Inspect done. Took %.2fs' % (e - s))
 
         results = list()
         for (y, x), patch in zip(coords, patch_results):
             if patch.score > self.thres:
-                result = DefectEntry(x, y, self.patch_size, self.patch_size, patch.score, patch.defect_size)
+                result = DefectEntry(
+                    x, y,
+                    self.patch_size,
+                    self.patch_size,
+                    patch.score,
+                    patch.defect_size
+                )
                 results.append(result)
         return results
 
