@@ -6,8 +6,7 @@ from .ae import Detector
 from tkinter import *
 from PIL import ImageTk, Image
 from imageio import imread, imsave
-import npy
-from .utils import task, Dummy
+from .utils import task, Dummy, rgb2gray, resize_image
 
 
 def image_to_patches(image, P):
@@ -59,8 +58,9 @@ class PatchInspectCore:
     # Inspect logics
 
     def inspect_local(self, patches, thres) -> np.ndarray:  # [N_patch]
-        patches = npy.image.rgb2gray(patches, keep_dims=True)
-        patches = npy.image.to_float32(patches)
+        patches = rgb2gray(patches, keep_dims=True)
+        if patches.dtype in [np.int32, np.int64, np.uint8]:
+            patches = patches.astype(np.float32) / 255
         recons = self.detector.recon(patches)
         residual = np.square(patches - recons)
         scores = residual.max(axis=-1).max(axis=-1).max(axis=-1)
@@ -210,7 +210,7 @@ class InspectUI(Frame):
     def inspect_and_get_result(self, image):
         if self.use_smooth:
             image = self.smooth_image(image)
-            imsave('blurred.png', image)
+            # imsave('blurred.png', image)
         patches, coords = image_to_patches(image, self.patch_size)
         s = time.time()
         print('Inspect start.')
@@ -315,7 +315,7 @@ class InspectUI(Frame):
 
         h = int(H * self.scale)
         w = int(W * self.scale)
-        image = npy.image.resize(image, (h, w))
+        image = resize_image(image, (h, w))
         print('Image reshaped from %s to %s. scale: %.3f' % ((H, W), (h, w), self.scale))
         return image
 

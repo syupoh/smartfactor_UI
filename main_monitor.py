@@ -1,9 +1,9 @@
 from codes.monitor import Monitor
+from codes.utils import set_tf_log
 
 
 def main():
-    import npy
-    npy.set_tf_log()
+    set_tf_log()
     app = Monitor("Smart Factory Demo")
     app.mainloop()
 

@@ -2,8 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 from sklearn.metrics import roc_auc_score
-from .utils import task
-import ntf, npy
+from .utils import task, num_batch, batch
 
 
 def get_encoder(input_shape=(128, 128, 1), d=8):
@@ -49,13 +48,13 @@ def batch(data, batch_size, N=None, strict=False, shuffle=False):
         inds = np.arange(N)
 
     if isinstance(data, tuple):
-        for i_batch in range(npy.calc.num_batch(N, batch_size, strict=strict)):
+        for i_batch in range(num_batch(N, batch_size, strict=strict)):
             inds_batch = inds[i_batch * batch_size: (i_batch + 1) * batch_size]
             d_batch = tuple(v[inds_batch] for v in data)
             yield i_batch, d_batch
 
     else:
-        for i_batch in range(npy.calc.num_batch(N, batch_size, strict=strict)):
+        for i_batch in range(num_batch(N, batch_size, strict=strict)):
             inds_batch = inds[i_batch * batch_size: (i_batch + 1) * batch_size]
             x_batch = data[inds_batch]
             yield i_batch, x_batch
@@ -92,7 +91,7 @@ class Detector:
     def predict(self, x):
         sess = self.sess
         scores = list()
-        for i_batch, x_batch in ntf.batch(x, 512):
+        for i_batch, x_batch in batch(x, 512):
             score = sess.run(self.normal_score, feed_dict={self.X: x_batch})
             scores.append(score)
         return np.concatenate(scores)
