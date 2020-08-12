@@ -25,6 +25,16 @@ def image_to_patches(image, P):
     return np.asarray(patches), np.asarray(coords)
 
 
+def calc_size(defect_map):
+    if not np.any():
+        return 0
+    xs, ys = np.where(defect_map)
+    size = max(xs) - min(xs) + max(ys) - min(ys)
+    if size == 0:
+        size = 1
+    return size
+
+
 def pixel_to_cm(i, j):
     x = (i - 1536) * 70 / 3840
     y = 4 + j * 33 / 2160
@@ -57,7 +67,7 @@ class PatchInspectCore:
 
     # Inspect logics
 
-    def inspect_local(self, patches, thres) -> np.ndarray:  # [N_patch]
+    def inspect_local(self, patches, thres) -> list:  # [N_patch]
         patches = rgb2gray(patches, keep_dims=True)
         if patches.dtype in [np.int32, np.int64, np.uint8]:
             patches = patches.astype(np.float32) / 255
@@ -65,9 +75,13 @@ class PatchInspectCore:
         residual = np.square(patches - recons)
         scores = residual.max(axis=-1).max(axis=-1).max(axis=-1)
         residual2 = residual.max(axis=-1)
-        defect_map = residual2 > thres
-        defect_count = np.sum(defect_map, axis=(1, 2))
-        results = [PatchInspectResultEntry(score, count) for score, count in zip(scores, defect_count)]
+        defect_maps = residual2 > thres
+
+        defect_sizes = [
+            calc_size(defect_map) for defect_map in defect_maps
+        ]
+        # defect_count = np.sum(defect_map, axis=(1, 2))
+        results = [PatchInspectResultEntry(score, defect_size) for score, defect_size in zip(scores, defect_sizes)]
         return results
 
     def inspect_random(self, patches) -> list:  # [N_patch]
